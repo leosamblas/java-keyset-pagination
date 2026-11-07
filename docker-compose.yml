@@ -1,0 +1,61 @@
+name: card-receivables-engine
+
+services:
+  # ============================================================================
+  # PostgreSQL 18 com suporte nativo a UUIDv7 (RFC 9562) e Keyset Seek
+  # ============================================================================
+  postgres:
+    image: postgres:latest
+    container_name: card-receivables-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: developer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - receivables-network
+
+  # ============================================================================
+  # Card Receivables Reactive Engine (Spring Boot 4.1.2 + WebFlux + R2DBC + Java 25)
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: card-receivables-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_APPLICATION_NAME: card-receivables-engine
+      SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/postgres
+      SPRING_R2DBC_USERNAME: postgres
+      SPRING_R2DBC_PASSWORD: developer
+      SPRING_FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      SPRING_FLYWAY_USER: postgres
+      SPRING_FLYWAY_PASSWORD: developer
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+      SPRING_FLYWAY_IGNORE_UNSUPPORTED_DATABASE: "true"
+      SPRING_THREADS_VIRTUAL_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - receivables-network
+
+volumes:
+  postgres-data:
+    name: card-receivables-postgres-data
+
+networks:
+  receivables-network:
+    name: card-receivables-network

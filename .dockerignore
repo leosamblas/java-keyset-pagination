@@ -1,0 +1,13 @@
+.git
+.gradle
+build
+out
+.vscode
+.idea
+.superpowers
+.worktrees
+js/node_modules
+js/*.sql
+*.md
+docs/
+

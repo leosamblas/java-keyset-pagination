@@ -185,17 +185,40 @@ mydbtest/
 ## 6. Como Executar o Projeto
 
 ### Pré-Requisitos
-- **Java 25** instalado (`java -version`).
-- **Docker** em execução (para o PostgreSQL 18).
-- **Node.js 24+** (opcional, para o módulo de seed).
+- **Docker & Docker Compose** instalados e em execução.
+- **Java 25 LTS** (necessário para execução local sem Docker).
+- **Node.js 24+** (necessário para o módulo de seed em `js/`).
 
-### Passo 1: Iniciar o Banco PostgreSQL 18
-Certifique-se de que o contêiner `postgresql-service` está em execução:
+---
+
+### Abordagem 1: Docker Compose Completo (Recomendado) 🐳
+Sobe todo o ecossistema (PostgreSQL 18 + Card Receivables Engine) com um único comando:
+
 ```powershell
-docker run --name postgresql-service -e POSTGRES_PASSWORD=developer -p 5432:5432 -d postgres:18-alpine
+# Compila a imagem e inicializa os contêineres em segundo plano
+docker compose up -d --build
+
+# Acompanhar os logs da aplicação:
+docker compose logs -f app
 ```
 
-### Passo 2: Iniciar a Aplicação Spring Boot
+A aplicação aguarda automaticamente o PostgreSQL 18 atingir o estado saudável (*healthcheck*) e roda as migrações do Flyway no startup.
+
+Para parar o ambiente:
+```powershell
+docker compose down
+```
+
+---
+
+### Abordagem 2: Execução Local para Desenvolvimento
+
+#### Passo 1: Iniciar o Banco PostgreSQL 18
+```powershell
+docker compose up -d postgres
+```
+
+#### Passo 2: Iniciar a Aplicação Spring Boot
 ```powershell
 .\gradlew.bat bootRun
 ```
@@ -214,7 +237,7 @@ Ao iniciar, você verá o banner personalizado e as rotas no terminal:
   OpenAPI:    http://localhost:8080/v3/api-docs
 ```
 
-### Passo 3: Executar a Suíte de Testes Automatizados
+#### Passo 3: Executar a Suíte de Testes Automatizados
 ```powershell
 .\gradlew.bat test --rerun-tasks
 ```
