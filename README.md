@@ -67,15 +67,23 @@ Identificadores primários gerados nativamente pelo banco via função `uuidv7()
 ```
 
 ### 2.2. Keyset Seek Pagination (Sem `OFFSET`)
-A paginação tradicional com `OFFSET` degrada exponencialmente ($O(N)$), forçando o banco a percorrer e descartar milhares de linhas anteriores antes de retornar o resultado:
+A paginação tradicional com `OFFSET` degrada linearmente (`O(N)`), forçando o banco a percorrer e descartar milhares de linhas anteriores antes de retornar o resultado:
 
-$$\text{Tempo com OFFSET} \propto N \quad \text{(Degradação severa em páginas profundas)}$$
+> ⚠️ **Problema do OFFSET:** `Tempo de Resposta ∝ N` (degradação severa e varredura desnecessária de disco à medida que a paginação avança para páginas mais profundas).
 
 A estratégia **Keyset Seek** utiliza o próprio cursor temporal composto `(merchant_id, id DESC)`:
 
-$$\text{Query de Seek:} \quad \texttt{WHERE merchant\_id = :merchantId AND id < :cursor ORDER BY id DESC LIMIT :limit}$$
+```sql
+-- Query de Keyset Seek (Complexidade O(1) no índice B-Tree)
+SELECT id, merchant_id, card_brand, gross_amount, net_amount, status
+FROM receivables
+WHERE merchant_id = :merchantId 
+  AND id < :cursor
+ORDER BY id DESC 
+LIMIT :limit;
+```
 
-- **Complexidade Constante $O(1)$:** O banco realiza um seek direto na árvore do índice `idx_receivables_merchant_id_desc`. A consulta para a primeira página ou para a página 500.000 possui **exatamente o mesmo tempo de resposta (poucos milissegundos)**.
+- **Complexidade Constante `O(1)`:** O banco realiza um seek direto na árvore do índice `idx_receivables_merchant_id_desc`. A consulta para a primeira página ou para a página 500.000 possui **exatamente o mesmo tempo de resposta (sub-milissegundo)**.
 - **Resiliência a Leituras Sujas:** Não ocorrem saltos ou duplicações de registros quando novos dados chegam enquanto o usuário está navegando.
 
 ---
