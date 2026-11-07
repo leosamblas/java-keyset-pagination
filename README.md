@@ -204,6 +204,10 @@ docker compose logs -f app
 
 A aplicação aguarda automaticamente o PostgreSQL 18 atingir o estado saudável (*healthcheck*) e roda as migrações do Flyway no startup.
 
+> **Limites de Recursos Configurados:**
+> - **PostgreSQL 18:** Limite de 2 CPUs e 2 GB de RAM (reserva mínima: 0.5 CPU / 512 MB) com `shm_size: 256M`.
+> - **Card Receivables Engine:** Limite de 2 CPUs e 2 GB de RAM (reserva mínima: 0.5 CPU / 512 MB). O runtime Java 25 aloca automaticamente até 75% da RAM do contêiner (`-XX:MaxRAMPercentage=75.0`).
+
 Para parar o ambiente:
 ```powershell
 docker compose down
