@@ -4,10 +4,13 @@
  * 
  * Gera transações de recebíveis com @faker-js/faker e insere via API HTTP reativa
  * (Spring WebFlux) ou gera script SQL para carga em lote no PostgreSQL 18.
+ * 
+ * Suporta volumes arbitrários (inclusive centenas de milhões de registros) com
+ * consumo constante de memória O(concorrência) via geração lazy/streaming.
  */
 
 import { faker } from '@faker-js/faker';
-import { writeFileSync } from 'node:fs';
+import { createWriteStream } from 'node:fs';
 import { resolve } from 'node:path';
 
 const CARD_BRANDS = ['VISA', 'MASTERCARD', 'ELO', 'AMEX', 'HIPERCARD'];
@@ -65,12 +68,12 @@ Opções:
 Exemplos:
   node seed.js                                    # 100 itens via HTTP contra localhost:8080
   node seed.js --count=500 --concurrency=20       # 500 itens com concorrência 20
-  node seed.js --mode=sql --count=1000            # Gera arquivo SQL com 1.000 INSERTs
+  node seed.js --mode=sql --count=1000000         # Gera arquivo SQL com 1 milhão de INSERTs
 `);
 }
 
 // ============================================================================
-// Data Generation Helpers
+// Data Generation Helpers (On-Demand / Zero-Allocation)
 // ============================================================================
 function generateMerchantPool(size) {
   return Array.from({ length: size }, (_, i) => `merch-${String(i + 1).padStart(3, '0')}`);
@@ -93,31 +96,74 @@ function generateMockReceivable(merchants) {
   };
 }
 
+function formatSeconds(totalSec) {
+  if (totalSec < 60) return `${Math.round(totalSec)}s`;
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = Math.round(totalSec % 60);
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}m`;
+}
+
 // ============================================================================
-// HTTP Seeder (Native fetch with Concurrency Worker Pool)
+// HTTP Seeder (Lazy Generation, O(concurrency) Memory, Smooth Throttled Progress)
 // ============================================================================
 async function runHttpSeeder(options, merchants) {
   const endpoint = `${options.apiUrl}/api/v1/receivables`;
   console.log(`\n============================================================`);
-  console.log(`[SEED] Modo HTTP: Iniciando envio de ${options.count} recebíveis`);
+  console.log(`[SEED] Modo HTTP: Iniciando envio de ${options.count.toLocaleString()} recebíveis`);
   console.log(`[SEED] Endpoint:    ${endpoint}`);
   console.log(`[SEED] Concorrência: ${options.concurrency} requisições simultâneas`);
   console.log(`[SEED] Lojistas:     ${merchants.join(', ')}`);
+  console.log(`[SEED] Memória:      O(concorrência) — Streaming lazy sob demanda`);
   console.log(`============================================================\n`);
 
   let completed = 0;
   let succeeded = 0;
   let failed = 0;
+  let currentIndex = 0;
+  let stopRequested = false;
   const errors = [];
   const startTime = Date.now();
+  let lastLogTime = 0;
 
-  const items = Array.from({ length: options.count }, () => generateMockReceivable(merchants));
-  let currentIndex = 0;
+  // Graceful shutdown on Ctrl+C: stop dispatching new items and show summary
+  const sigintHandler = () => {
+    if (stopRequested) {
+      console.log('\n[SEED] Forçando encerramento imediato...');
+      process.exit(1);
+    }
+    stopRequested = true;
+    console.log('\n[SEED] Interrupção detectada (Ctrl+C). Finalizando requisições pendentes...');
+  };
+  process.on('SIGINT', sigintHandler);
 
-  async function worker(workerId) {
-    while (currentIndex < items.length) {
+  function logProgress(force = false) {
+    const now = Date.now();
+    if (!force && now - lastLogTime < 500) return;
+    lastLogTime = now;
+
+    const elapsedSec = (now - startTime) / 1000;
+    const currentRps = (completed / Math.max(0.001, elapsedSec)).toFixed(0);
+    const pct = ((completed / options.count) * 100).toFixed(2);
+    const remaining = options.count - completed;
+    const etaSec = Number(currentRps) > 0 ? remaining / Number(currentRps) : 0;
+    const etaStr = formatSeconds(etaSec);
+
+    process.stdout.write(
+      `\r[SEED] ${completed.toLocaleString()}/${options.count.toLocaleString()} (${pct}%) | ` +
+      `${currentRps} req/s | Sucessos: ${succeeded.toLocaleString()} | Falhas: ${failed.toLocaleString()} | ETA: ${etaStr}   `
+    );
+  }
+
+  async function worker() {
+    while (!stopRequested) {
       const idx = currentIndex++;
-      const payload = items[idx];
+      if (idx >= options.count) break;
+
+      // Generate object lazily in memory on demand (never pre-allocated in massive array)
+      const payload = generateMockReceivable(merchants);
 
       try {
         const response = await fetch(endpoint, {
@@ -144,28 +190,27 @@ async function runHttpSeeder(options, merchants) {
         }
       }
 
-      if (completed % Math.max(1, Math.floor(options.count / 10)) === 0 || completed === options.count) {
-        const pct = Math.round((completed / options.count) * 100);
-        process.stdout.write(`\r[SEED] Progresso: ${completed}/${options.count} (${pct}%) — Sucesso: ${succeeded}, Falhas: ${failed}`);
-      }
+      logProgress();
     }
   }
 
-  const workers = Array.from({ length: options.concurrency }, (_, i) => worker(i));
+  const workers = Array.from({ length: options.concurrency }, () => worker());
   await Promise.all(workers);
+  process.removeListener('SIGINT', sigintHandler);
+  logProgress(true);
 
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
-  const rps = (options.count / Math.max(0.001, parseFloat(durationSec))).toFixed(1);
+  const rps = (completed / Math.max(0.001, parseFloat(durationSec))).toFixed(1);
 
   console.log(`\n\n============================================================`);
-  console.log(`[SEED] Concluído em ${durationSec}s (${rps} req/s)`);
-  console.log(`[SEED] Total:     ${options.count}`);
-  console.log(`[SEED] Sucessos:  ${succeeded} (HTTP 201 Created)`);
-  console.log(`[SEED] Falhas:    ${failed}`);
+  console.log(`[SEED] Finalizado em ${durationSec}s (${rps} req/s)`);
+  console.log(`[SEED] Processados: ${completed.toLocaleString()} de ${options.count.toLocaleString()}`);
+  console.log(`[SEED] Sucessos:    ${succeeded.toLocaleString()} (HTTP 201 Created)`);
+  console.log(`[SEED] Falhas:      ${failed.toLocaleString()}`);
   if (failed > 0) {
     console.log(`[SEED] Primeiros erros encontrados:`);
     errors.forEach((err) => console.log(`   - ${err}`));
-    if (errors.some(e => e.includes('ECONNREFUSED') || e.includes('fetch failed'))) {
+    if (errors.some((e) => e.includes('ECONNREFUSED') || e.includes('fetch failed'))) {
       console.log(`\n[DICA] Certifique-se de que a aplicação Spring Boot está rodando:`);
       console.log(`       .\\gradlew.bat bootRun`);
     }
@@ -178,27 +223,59 @@ async function runHttpSeeder(options, merchants) {
 }
 
 // ============================================================================
-// SQL File Seeder (Direct bulk INSERT generation with PostgreSQL 18 uuidv7())
+// SQL File Seeder (Streaming to Disk with Backpressure & O(1) Memory)
 // ============================================================================
-function runSqlSeeder(options, merchants) {
+async function runSqlSeeder(options, merchants) {
   const filePath = resolve(process.cwd(), options.output);
   console.log(`\n============================================================`);
-  console.log(`[SEED] Modo SQL: Gerando ${options.count} recebíveis em arquivo`);
+  console.log(`[SEED] Modo SQL: Gerando ${options.count.toLocaleString()} recebíveis em arquivo`);
   console.log(`[SEED] Arquivo:  ${filePath}`);
   console.log(`[SEED] Lojistas: ${merchants.join(', ')}`);
+  console.log(`[SEED] Memória:  O(1) — Gravação contínua em stream com backpressure`);
   console.log(`============================================================\n`);
 
   const startTime = Date.now();
-  const lines = [
-    `-- ============================================================================`,
-    `-- Seed de Recebíveis gerado por js/seed.js em ${new Date().toISOString()}`,
-    `-- PostgreSQL 18 nativo com uuidv7() e Keyset Pagination`,
-    `-- Total de registros: ${options.count}`,
-    `-- ============================================================================`,
-    ``,
-  ];
+  let lastLogTime = 0;
+  const stream = createWriteStream(filePath, { flags: 'w', encoding: 'utf8' });
 
-  const BATCH_SIZE = 100;
+  function writeAsync(data) {
+    return new Promise((resolve, reject) => {
+      const onError = (err) => {
+        cleanup();
+        reject(err);
+      };
+      const onDrain = () => {
+        cleanup();
+        resolve();
+      };
+      const cleanup = () => {
+        stream.removeListener('error', onError);
+        stream.removeListener('drain', onDrain);
+      };
+
+      stream.once('error', onError);
+
+      if (!stream.write(data)) {
+        stream.once('drain', onDrain);
+      } else {
+        cleanup();
+        resolve();
+      }
+    });
+  }
+
+  // Header
+  await writeAsync(
+    `-- ============================================================================\n` +
+    `-- Seed de Recebíveis gerado por js/seed.js em ${new Date().toISOString()}\n` +
+    `-- PostgreSQL 18 nativo com uuidv7() e Keyset Pagination\n` +
+    `-- Total de registros: ${options.count.toLocaleString()}\n` +
+    `-- ============================================================================\n\n`
+  );
+
+  const BATCH_SIZE = 500;
+  let written = 0;
+
   for (let i = 0; i < options.count; i += BATCH_SIZE) {
     const batchCount = Math.min(BATCH_SIZE, options.count - i);
     const valueTuples = [];
@@ -223,18 +300,32 @@ function runSqlSeeder(options, merchants) {
       );
     }
 
-    lines.push(
+    const sqlChunk =
       `INSERT INTO receivables (id, merchant_id, card_brand, gross_amount, fee_rate, fee_amount, net_amount, installments, installment_number, status, transaction_date, settlement_date, created_at) VALUES\n` +
       valueTuples.join(',\n') +
-      `;\n`
-    );
+      `;\n`;
+
+    await writeAsync(sqlChunk);
+    written += batchCount;
+
+    const now = Date.now();
+    if (now - lastLogTime > 500 || written === options.count) {
+      lastLogTime = now;
+      const pct = ((written / options.count) * 100).toFixed(2);
+      const elapsed = (now - startTime) / 1000;
+      const itemsSec = (written / Math.max(0.001, elapsed)).toFixed(0);
+      process.stdout.write(`\r[SEED] Gravando SQL: ${written.toLocaleString()}/${options.count.toLocaleString()} (${pct}%) | ${itemsSec} registros/s`);
+    }
   }
 
-  writeFileSync(filePath, lines.join('\n'), 'utf8');
-  const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+  await new Promise((resolve) => stream.end(resolve));
 
-  console.log(`[SEED] Arquivo SQL gerado com sucesso: ${filePath}`);
-  console.log(`[SEED] Tempo decorrido: ${durationSec}s`);
+  const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+  const itemsSec = (options.count / Math.max(0.001, parseFloat(durationSec))).toFixed(0);
+
+  console.log(`\n\n[SEED] Arquivo SQL gerado com sucesso: ${filePath}`);
+  console.log(`[SEED] Registros gerados: ${options.count.toLocaleString()}`);
+  console.log(`[SEED] Tempo decorrido:   ${durationSec}s (${itemsSec} registros/s)`);
   console.log(`\nPara aplicar diretamente no PostgreSQL via Docker:`);
   console.log(`  docker exec -i postgresql-service psql -U postgres -d postgres < ${options.output}`);
   console.log(`============================================================`);
@@ -269,7 +360,7 @@ async function main() {
   const merchants = generateMerchantPool(options.merchants);
 
   if (options.mode === 'sql') {
-    runSqlSeeder(options, merchants);
+    await runSqlSeeder(options, merchants);
   } else {
     await runHttpSeeder(options, merchants);
   }

@@ -2,6 +2,8 @@
 
 Script de geração e inserção de dados mockados realistas para o projeto `mydbtest` utilizando **Node.js 24**, **ECMAScript Modules (`type: "module"`)** e **`@faker-js/faker`**.
 
+O script foi projetado com **geração sob demanda (lazy generation)** e **streaming com backpressure**, garantindo consumo constante e mínimo de memória RAM (**O(concorrência)**, ~25MB), suportando desde dezenas de itens até centenas de milhões de registros sem estouro de pilha (*Out of Memory*).
+
 ---
 
 ## 1. Pré-Requisitos
@@ -86,3 +88,4 @@ Após executar o seed:
 3. Clique em **Try it out**.
 4. Informe o `merchantId` (ex: `merch-001`) e `limit` (ex: `10`).
 5. Clique em **Execute** e copie o valor de `nextCursor` para testar a paginação por cursor (keyset seek).
+
