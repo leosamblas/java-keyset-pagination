@@ -1,0 +1,16 @@
+{
+  "name": "mydbtest-seed",
+  "version": "1.0.0",
+  "description": "Script de seed com dados mockados para o projeto reativo mydbtest",
+  "type": "module",
+  "main": "seed.js",
+  "scripts": {
+    "seed": "node seed.js",
+    "seed:quick": "node seed.js --count=50 --concurrency=5",
+    "seed:bulk": "node seed.js --count=500 --concurrency=20",
+    "seed:sql": "node seed.js --mode=sql --count=1000 --output=seed-receivables.sql"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.6.0"
+  }
+}

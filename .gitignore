@@ -40,3 +40,12 @@ out/
 .superpowers/
 .worktrees/
 
+### Node.js ###
+node_modules/
+js/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+js/*.sql
+!src/main/resources/db/migration/*.sql
+
