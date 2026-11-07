@@ -135,8 +135,8 @@ mydbtest/
 ├── settings.gradle                            # Nome do projeto: card-receivables-engine
 ├── src/
 │   ├── main/
-│   │   ├── java/com/database/opt/mydbtest/
-│   │   │   ├── MydbtestApplication.java       # Ponto de entrada com banner informativo e virtual threads
+│   │   ├── java/com/cardreceivables/engine/
+│   │   │   ├── CardReceivablesApplication.java # Ponto de entrada com banner informativo e virtual threads
 │   │   │   ├── domain/                        # NÚCLEO DO DOMÍNIO PURO
 │   │   │   │   └── model/                     # Receivable, CardBrand, ReceivableStatus, KeysetPage
 │   │   │   ├── application/                   # CASOS DE USO E PORTAS
@@ -154,7 +154,7 @@ mydbtest/
 │   │       └── db/migration/
 │   │           └── V1__create_receivables_table.sql # DDL com uuidv7() e índice de seek
 │   └── test/                                  # SUÍTE COMPLETA DE TESTES AUTOMATIZADOS (100% Green)
-│       └── java/com/database/opt/mydbtest/
+│       └── java/com/cardreceivables/engine/
 │           ├── domain/model/                  # Testes de regras de negócio financeiras
 │           ├── application/service/           # Testes de unidade dos casos de uso
 │           ├── adapters/inbound/web/          # Testes de API reativa com WebTestClient
