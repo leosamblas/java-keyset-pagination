@@ -37,29 +37,19 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/receivables")
 @Tag(name = "Recebíveis", description = "Operações reativas de cadastro e consulta de recebíveis de cartão com Keyset Pagination e PostgreSQL 18 UUIDv7")
+@RequiredArgsConstructor
 public class ReceivableController {
 
     private final CreateReceivableUseCase createUseCase;
     private final CreateReceivableBatchUseCase createBatchUseCase;
     private final FindReceivableByIdUseCase findByIdUseCase;
     private final ListReceivablesKeysetUseCase listKeysetUseCase;
-
-    public ReceivableController(
-            CreateReceivableUseCase createUseCase,
-            CreateReceivableBatchUseCase createBatchUseCase,
-            FindReceivableByIdUseCase findByIdUseCase,
-            ListReceivablesKeysetUseCase listKeysetUseCase
-    ) {
-        this.createUseCase = Objects.requireNonNull(createUseCase, "createUseCase must not be null");
-        this.createBatchUseCase = Objects.requireNonNull(createBatchUseCase, "createBatchUseCase must not be null");
-        this.findByIdUseCase = Objects.requireNonNull(findByIdUseCase, "findByIdUseCase must not be null");
-        this.listKeysetUseCase = Objects.requireNonNull(listKeysetUseCase, "listKeysetUseCase must not be null");
-    }
 
     @PostMapping
     @Operation(

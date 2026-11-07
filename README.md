@@ -127,7 +127,7 @@ flowchart LR
     R2DBCRepo --> PostgresDB
 ```
 
-- **`domain` (Puro Java):** Invariantes financeiras, cálculo de `feeAmount`, `netAmount` e determinação de `settlementDate`. **Zero dependência de Spring, JPA, Lombok ou bibliotecas externas.**
+- **`domain`:** Invariantes financeiras, cálculo de `feeAmount`, `netAmount` e determinação de `settlementDate`. **Zero dependência de Spring, JPA ou frameworks de infraestrutura/persistência**, utilizando Lombok em tempo de compilação para eliminação de código boilerplate (`@Getter`, `@Builder`, `@ToString`).
 - **`application`:** Casos de uso (`CreateReceivableUseCase`, `GetReceivablesKeysetUseCase`, `GetReceivableByIdUseCase`) e definição da porta `ReceivableRepositoryPort`.
 - **`adapters.inbound.web`:** Endpoints reativos Spring WebFlux, validação via Jakarta Bean Validation e anotações OpenAPI 3.0.
 - **`adapters.outbound.persistence`:** Mapeamento reativo com `Persistable<UUID>`, queries segregadas de seek e integração com R2DBC.

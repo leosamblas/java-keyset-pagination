@@ -5,22 +5,19 @@ import com.cardreceivables.engine.adapters.outbound.persistence.mapper.Receivabl
 import com.cardreceivables.engine.adapters.outbound.persistence.repository.SpringDataReceivableRepository;
 import com.cardreceivables.engine.domain.model.Receivable;
 import com.cardreceivables.engine.domain.ports.out.ReceivableRepositoryPort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 @Component
+@RequiredArgsConstructor
 public class ReceivablePersistenceAdapter implements ReceivableRepositoryPort {
 
     private final SpringDataReceivableRepository repository;
-
-    public ReceivablePersistenceAdapter(SpringDataReceivableRepository repository) {
-        this.repository = Objects.requireNonNull(repository, "repository must not be null");
-    }
 
     @Override
     public Mono<Receivable> save(Receivable receivable) {

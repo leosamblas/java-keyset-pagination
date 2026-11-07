@@ -1,5 +1,9 @@
 package com.cardreceivables.engine.domain.model;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.ToString;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -8,6 +12,8 @@ import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.UUID;
 
+@Getter
+@ToString
 public class Receivable {
 
     private final UUID id;
@@ -24,6 +30,7 @@ public class Receivable {
     private final LocalDate settlementDate;
     private final Instant createdAt;
 
+    @Builder
     public Receivable(
             UUID id,
             String merchantId,
@@ -80,161 +87,6 @@ public class Receivable {
         this.createdAt = (createdAt != null) ? createdAt : Instant.now();
     }
 
-    public UUID getId() {
-        return id;
-    }
-
-    public String getMerchantId() {
-        return merchantId;
-    }
-
-    public CardBrand getCardBrand() {
-        return cardBrand;
-    }
-
-    public BigDecimal getGrossAmount() {
-        return grossAmount;
-    }
-
-    public BigDecimal getFeeRate() {
-        return feeRate;
-    }
-
-    public BigDecimal getFeeAmount() {
-        return feeAmount;
-    }
-
-    public BigDecimal getNetAmount() {
-        return netAmount;
-    }
-
-    public Integer getInstallments() {
-        return installments;
-    }
-
-    public Integer getInstallmentNumber() {
-        return installmentNumber;
-    }
-
-    public ReceivableStatus getStatus() {
-        return status;
-    }
-
-    public Instant getTransactionDate() {
-        return transactionDate;
-    }
-
-    public LocalDate getSettlementDate() {
-        return settlementDate;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-        private UUID id;
-        private String merchantId;
-        private CardBrand cardBrand;
-        private BigDecimal grossAmount;
-        private BigDecimal feeRate;
-        private BigDecimal feeAmount;
-        private BigDecimal netAmount;
-        private Integer installments = 1;
-        private Integer installmentNumber = 1;
-        private ReceivableStatus status = ReceivableStatus.PENDING;
-        private Instant transactionDate;
-        private LocalDate settlementDate;
-        private Instant createdAt;
-
-        public Builder id(UUID id) {
-            this.id = id;
-            return this;
-        }
-
-        public Builder merchantId(String merchantId) {
-            this.merchantId = merchantId;
-            return this;
-        }
-
-        public Builder cardBrand(CardBrand cardBrand) {
-            this.cardBrand = cardBrand;
-            return this;
-        }
-
-        public Builder grossAmount(BigDecimal grossAmount) {
-            this.grossAmount = grossAmount;
-            return this;
-        }
-
-        public Builder feeRate(BigDecimal feeRate) {
-            this.feeRate = feeRate;
-            return this;
-        }
-
-        public Builder feeAmount(BigDecimal feeAmount) {
-            this.feeAmount = feeAmount;
-            return this;
-        }
-
-        public Builder netAmount(BigDecimal netAmount) {
-            this.netAmount = netAmount;
-            return this;
-        }
-
-        public Builder installments(Integer installments) {
-            this.installments = installments;
-            return this;
-        }
-
-        public Builder installmentNumber(Integer installmentNumber) {
-            this.installmentNumber = installmentNumber;
-            return this;
-        }
-
-        public Builder status(ReceivableStatus status) {
-            this.status = status;
-            return this;
-        }
-
-        public Builder transactionDate(Instant transactionDate) {
-            this.transactionDate = transactionDate;
-            return this;
-        }
-
-        public Builder settlementDate(LocalDate settlementDate) {
-            this.settlementDate = settlementDate;
-            return this;
-        }
-
-        public Builder createdAt(Instant createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public Receivable build() {
-            return new Receivable(
-                    id,
-                    merchantId,
-                    cardBrand,
-                    grossAmount,
-                    feeRate,
-                    feeAmount,
-                    netAmount,
-                    installments,
-                    installmentNumber,
-                    status,
-                    transactionDate,
-                    settlementDate,
-                    createdAt
-            );
-        }
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -248,4 +100,3 @@ public class Receivable {
         return id != null ? id.hashCode() : getClass().hashCode();
     }
 }
-

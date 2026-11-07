@@ -14,23 +14,22 @@ public final class ReceivablePersistenceMapper {
     public static ReceivableEntity toEntity(Receivable domain) {
         if (domain == null) return null;
 
-        ReceivableEntity entity = new ReceivableEntity();
-        entity.setId(domain.getId());
-        entity.setMerchantId(domain.getMerchantId());
-        entity.setCardBrand(domain.getCardBrand() != null ? domain.getCardBrand().name() : null);
-        entity.setGrossAmount(domain.getGrossAmount());
-        entity.setFeeRate(domain.getFeeRate());
-        entity.setFeeAmount(domain.getFeeAmount());
-        entity.setNetAmount(domain.getNetAmount());
-        entity.setInstallments(domain.getInstallments());
-        entity.setInstallmentNumber(domain.getInstallmentNumber());
-        entity.setStatus(domain.getStatus() != null ? domain.getStatus().name() : ReceivableStatus.PENDING.name());
-        entity.setTransactionDate(domain.getTransactionDate());
-        entity.setSettlementDate(domain.getSettlementDate());
-        entity.setCreatedAt(domain.getCreatedAt() != null ? domain.getCreatedAt() : Instant.now());
-        entity.setNew(domain.getId() == null);
-
-        return entity;
+        return ReceivableEntity.builder()
+                .id(domain.getId())
+                .merchantId(domain.getMerchantId())
+                .cardBrand(domain.getCardBrand() != null ? domain.getCardBrand().name() : null)
+                .grossAmount(domain.getGrossAmount())
+                .feeRate(domain.getFeeRate())
+                .feeAmount(domain.getFeeAmount())
+                .netAmount(domain.getNetAmount())
+                .installments(domain.getInstallments())
+                .installmentNumber(domain.getInstallmentNumber())
+                .status(domain.getStatus() != null ? domain.getStatus().name() : ReceivableStatus.PENDING.name())
+                .transactionDate(domain.getTransactionDate())
+                .settlementDate(domain.getSettlementDate())
+                .createdAt(domain.getCreatedAt() != null ? domain.getCreatedAt() : Instant.now())
+                .isNew(domain.getId() == null)
+                .build();
     }
 
     public static Receivable toDomain(ReceivableEntity entity) {

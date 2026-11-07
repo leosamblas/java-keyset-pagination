@@ -8,13 +8,14 @@ import com.cardreceivables.engine.domain.ports.in.CreateReceivableUseCase;
 import com.cardreceivables.engine.domain.ports.in.FindReceivableByIdUseCase;
 import com.cardreceivables.engine.domain.ports.in.ListReceivablesKeysetUseCase;
 import com.cardreceivables.engine.domain.ports.out.ReceivableRepositoryPort;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
+@RequiredArgsConstructor
 public class ReceivableApplicationService implements
         CreateReceivableUseCase,
         CreateReceivableBatchUseCase,
@@ -25,10 +26,6 @@ public class ReceivableApplicationService implements
     private static final int MAX_LIMIT = 100;
 
     private final ReceivableRepositoryPort repositoryPort;
-
-    public ReceivableApplicationService(ReceivableRepositoryPort repositoryPort) {
-        this.repositoryPort = Objects.requireNonNull(repositoryPort, "repositoryPort must not be null");
-    }
 
     @Override
     public Mono<Receivable> create(CreateReceivableCommand command) {
