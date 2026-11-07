@@ -21,10 +21,10 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: '0.5'
-          memory: 512M
+          memory: 256M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
@@ -48,10 +48,10 @@ services:
       resources:
         limits:
           cpus: '2.0'
-          memory: 2048M
+          memory: 1024M
         reservations:
           cpus: '0.5'
-          memory: 512M
+          memory: 256M
     environment:
       SPRING_APPLICATION_NAME: card-receivables-engine
       SPRING_R2DBC_URL: r2dbc:postgresql://postgres:5432/postgres
