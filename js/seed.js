@@ -207,6 +207,7 @@ async function runHttpSeeder(options, merchants) {
         completed += thisBatchSize;
         if (response.status === 201) {
           succeeded += thisBatchSize;
+          await response.arrayBuffer();
         } else {
           failed += thisBatchSize;
           const body = await response.text();
