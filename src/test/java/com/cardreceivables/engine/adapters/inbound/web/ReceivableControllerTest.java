@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -194,5 +196,28 @@ class ReceivableControllerTest {
                 .jsonPath("$.limit").isEqualTo(2)
                 .jsonPath("$.nextCursor").isEqualTo(id2.toString())
                 .jsonPath("$.hasNext").isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/receivables/batch deve criar múltiplos recebíveis e retornar 201 Created")
+    void shouldCreateReceivablesBatchSuccessfully() {
+        CreateReceivableRequest req1 = new CreateReceivableRequest("merch-1", CardBrand.VISA, new BigDecimal("100.00"), new BigDecimal("0.02"), 1, 1, Instant.now());
+        CreateReceivableRequest req2 = new CreateReceivableRequest("merch-1", CardBrand.MASTERCARD, new BigDecimal("200.00"), new BigDecimal("0.03"), 2, 1, Instant.now());
+
+        Receivable r1 = Receivable.builder().id(UUID.randomUUID()).merchantId("merch-1").cardBrand(CardBrand.VISA).grossAmount(new BigDecimal("100.00")).feeRate(new BigDecimal("0.02")).build();
+        Receivable r2 = Receivable.builder().id(UUID.randomUUID()).merchantId("merch-1").cardBrand(CardBrand.MASTERCARD).grossAmount(new BigDecimal("200.00")).feeRate(new BigDecimal("0.03")).build();
+
+        when(createBatchUseCase.createBatch(anyList())).thenReturn(Flux.just(r1, r2));
+
+        webTestClient.post()
+                .uri("/api/v1/receivables/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(List.of(req1, req2))
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].merchantId").isEqualTo("merch-1")
+                .jsonPath("$[1].cardBrand").isEqualTo("MASTERCARD");
     }
 }

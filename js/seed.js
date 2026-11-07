@@ -27,6 +27,8 @@ function parseArgs() {
     merchants: 5,
     mode: 'http',
     output: 'seed-receivables.sql',
+    batch: false,
+    batchSize: 200,
     help: false,
   };
 
@@ -43,9 +45,21 @@ function parseArgs() {
       options.merchants = Math.max(1, parseInt(arg.split('=')[1], 10) || 5);
     } else if (arg.startsWith('--mode=')) {
       const mode = arg.split('=')[1].toLowerCase();
-      options.mode = mode === 'sql' ? 'sql' : 'http';
+      if (mode === 'sql') {
+        options.mode = 'sql';
+      } else if (mode === 'batch') {
+        options.mode = 'http';
+        options.batch = true;
+      } else {
+        options.mode = 'http';
+      }
     } else if (arg.startsWith('--output=')) {
       options.output = arg.split('=')[1];
+    } else if (arg === '--batch') {
+      options.batch = true;
+    } else if (arg.startsWith('--batch-size=')) {
+      options.batchSize = Math.max(1, parseInt(arg.split('=')[1], 10) || 200);
+      options.batch = true;
     }
   }
 
@@ -58,16 +72,19 @@ Uso: node seed.js [opções]
 
 Opções:
   --count=N           Quantidade de recebíveis a gerar (padrão: 100)
-  --concurrency=N     Número de requisições HTTP paralelas em modo http (padrão: 10)
+  --concurrency=N     Número de conexões HTTP paralelas em modo http (padrão: 10)
+  --batch             Ativa envio em lote via endpoint reativo /api/v1/receivables/batch
+  --batch-size=N      Tamanho de cada lote no modo batch (padrão: 200)
   --api-url=URL       URL base da API Spring WebFlux (padrão: http://localhost:8080)
   --merchants=N       Tamanho do pool de lojistas para teste de paginação (padrão: 5)
-  --mode=http|sql     Modo de execução: 'http' (via REST API) ou 'sql' (gera arquivo .sql) (padrão: http)
+  --mode=http|batch|sql Modo de execução: 'http', 'batch' ou 'sql' (padrão: http)
   --output=FILE       Nome do arquivo no modo SQL (padrão: seed-receivables.sql)
   --help, -h          Exibe esta ajuda
 
 Exemplos:
-  node seed.js                                    # 100 itens via HTTP contra localhost:8080
-  node seed.js --count=500 --concurrency=20       # 500 itens com concorrência 20
+  node seed.js                                    # 100 itens individuais via HTTP
+  node seed.js --batch --count=5000               # 5.000 itens em lotes de 200 via /batch
+  node seed.js --batch --count=50000 --batch-size=500 --concurrency=20 # Carga massiva
   node seed.js --mode=sql --count=1000000         # Gera arquivo SQL com 1 milhão de INSERTs
 `);
 }
@@ -107,21 +124,26 @@ function formatSeconds(totalSec) {
 }
 
 // ============================================================================
-// HTTP Seeder (Lazy Generation, O(concurrency) Memory, Smooth Throttled Progress)
+// HTTP Seeder (Lazy Generation, O(concurrency * batchSize) Memory, Smooth Progress)
 // ============================================================================
 async function runHttpSeeder(options, merchants) {
-  const endpoint = `${options.apiUrl}/api/v1/receivables`;
+  const isBatch = Boolean(options.batch);
+  const endpoint = isBatch
+    ? `${options.apiUrl}/api/v1/receivables/batch`
+    : `${options.apiUrl}/api/v1/receivables`;
+
   console.log(`\n============================================================`);
-  console.log(`[SEED] Modo HTTP: Iniciando envio de ${options.count.toLocaleString()} recebíveis`);
+  console.log(`[SEED] Modo HTTP ${isBatch ? `(Batch: ${options.batchSize} itens/lote)` : '(Individual)'}: Iniciando envio de ${options.count.toLocaleString()} recebíveis`);
   console.log(`[SEED] Endpoint:    ${endpoint}`);
-  console.log(`[SEED] Concorrência: ${options.concurrency} requisições simultâneas`);
+  console.log(`[SEED] Concorrência: ${options.concurrency} conexões simultâneas`);
   console.log(`[SEED] Lojistas:     ${merchants.join(', ')}`);
-  console.log(`[SEED] Memória:      O(concorrência) — Streaming lazy sob demanda`);
+  console.log(`[SEED] Memória:      O(concorrência * batchSize) — Streaming lazy sob demanda`);
   console.log(`============================================================\n`);
 
   let completed = 0;
   let succeeded = 0;
   let failed = 0;
+  let dispatched = 0;
   let currentIndex = 0;
   let stopRequested = false;
   const errors = [];
@@ -153,17 +175,27 @@ async function runHttpSeeder(options, merchants) {
 
     process.stdout.write(
       `\r[SEED] ${completed.toLocaleString()}/${options.count.toLocaleString()} (${pct}%) | ` +
-      `${currentRps} req/s | Sucessos: ${succeeded.toLocaleString()} | Falhas: ${failed.toLocaleString()} | ETA: ${etaStr}   `
+      `${currentRps} itens/s | Sucessos: ${succeeded.toLocaleString()} | Falhas: ${failed.toLocaleString()} | ETA: ${etaStr}   `
     );
   }
 
   async function worker() {
     while (!stopRequested) {
-      const idx = currentIndex++;
-      if (idx >= options.count) break;
+      let thisBatchSize = 1;
 
-      // Generate object lazily in memory on demand (never pre-allocated in massive array)
-      const payload = generateMockReceivable(merchants);
+      if (isBatch) {
+        if (dispatched >= options.count) break;
+        thisBatchSize = Math.min(options.batchSize, options.count - dispatched);
+        dispatched += thisBatchSize;
+      } else {
+        const idx = currentIndex++;
+        if (idx >= options.count) break;
+        thisBatchSize = 1;
+      }
+
+      const payload = isBatch
+        ? Array.from({ length: thisBatchSize }, () => generateMockReceivable(merchants))
+        : generateMockReceivable(merchants);
 
       try {
         const response = await fetch(endpoint, {
@@ -172,19 +204,19 @@ async function runHttpSeeder(options, merchants) {
           body: JSON.stringify(payload),
         });
 
-        completed++;
+        completed += thisBatchSize;
         if (response.status === 201) {
-          succeeded++;
+          succeeded += thisBatchSize;
         } else {
-          failed++;
+          failed += thisBatchSize;
           const body = await response.text();
           if (errors.length < 5) {
             errors.push(`Status ${response.status}: ${body.substring(0, 100)}`);
           }
         }
       } catch (err) {
-        completed++;
-        failed++;
+        completed += thisBatchSize;
+        failed += thisBatchSize;
         if (errors.length < 5) {
           errors.push(err.message || 'Connection error');
         }
@@ -203,7 +235,8 @@ async function runHttpSeeder(options, merchants) {
   const rps = (completed / Math.max(0.001, parseFloat(durationSec))).toFixed(1);
 
   console.log(`\n\n============================================================`);
-  console.log(`[SEED] Finalizado em ${durationSec}s (${rps} req/s)`);
+  console.log(`[SEED] Finalizado em ${durationSec}s (${rps} itens/s)`);
+  console.log(`[SEED] Modo:        ${isBatch ? `Batch (${options.batchSize} itens/lote)` : 'Individual'}`);
   console.log(`[SEED] Processados: ${completed.toLocaleString()} de ${options.count.toLocaleString()}`);
   console.log(`[SEED] Sucessos:    ${succeeded.toLocaleString()} (HTTP 201 Created)`);
   console.log(`[SEED] Falhas:      ${failed.toLocaleString()}`);

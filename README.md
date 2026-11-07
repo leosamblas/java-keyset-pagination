@@ -230,10 +230,16 @@ Para testar a volumetria, comportamento sob estresse e paginação no Swagger UI
 cd js
 npm install
 
-# 1. Envio massivo via API HTTP (exercita WebFlux, DTOs e PostgreSQL)
+# 1. Envio HTTP em lote de alta vazão (POST /api/v1/receivables/batch)
+npm run seed:batch
+
+# 2. Carga de estresse massiva em lote (50.000 recebíveis, 20 workers, lotes de 500)
+npm run seed:stress
+
+# 3. Envio HTTP individual padrão (POST /api/v1/receivables)
 node seed.js --count=1000 --concurrency=20
 
-# 2. Carga instantânea via SQL (gera comandos INSERT com uuidv7() nativo)
+# 4. Carga instantânea via SQL (gera comandos INSERT com uuidv7() nativo)
 node seed.js --mode=sql --count=50000 --output=carga.sql
 ```
 

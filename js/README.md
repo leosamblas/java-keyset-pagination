@@ -27,8 +27,8 @@ npm install
 
 ## 3. Modos de Uso
 
-### 3.1. Modo HTTP (Padrão — Via REST API Spring WebFlux)
-Dispara requisições `POST /api/v1/receivables` contra a aplicação Spring Boot, exercitando todo o fluxo reativo (validação de DTOs Jakarta, cálculo de taxas no domínio, persistência R2DBC e geração de UUIDv7 no PostgreSQL 18).
+### 3.1. Modo HTTP Individual (`POST /api/v1/receivables`)
+Dispara requisições individuais contra a aplicação Spring Boot, validando cada recebível de forma isolada.
 
 ```powershell
 # Execução padrão (100 recebíveis, concorrência 10, 5 lojistas)
@@ -36,19 +36,27 @@ npm run seed
 
 # Execução rápida (50 recebíveis)
 npm run seed:quick
-
-# Carga de estresse (500 recebíveis, concorrência 20)
-npm run seed:bulk
-```
-
-Ou com parâmetros personalizados:
-```powershell
-node seed.js --count=200 --concurrency=15 --merchants=8 --api-url=http://localhost:8080
 ```
 
 ---
 
-### 3.2. Modo SQL (Carga Direta em Arquivo para o PostgreSQL 18)
+### 3.2. Modo HTTP Batch (`POST /api/v1/receivables/batch`) — Alta Vazão ⚡
+Dispara requisições em lote para o endpoint reativo de batch da API, processando centenas ou milhares de itens por requisição. Reduz o overhead de rede e acelera drasticamente o povoamento do banco.
+
+```powershell
+# 5.000 recebíveis em lotes de 250 (10 conexões simultâneas)
+npm run seed:batch
+
+# Teste de estresse: 50.000 recebíveis em lotes de 500 (20 conexões simultâneas)
+npm run seed:stress
+
+# Customizado via CLI:
+node seed.js --batch --count=20000 --batch-size=500 --concurrency=15
+```
+
+---
+
+### 3.3. Modo SQL (Carga Direta em Arquivo para o PostgreSQL 18)
 Gera um arquivo SQL com múltiplos comandos `INSERT INTO receivables` formatados e prontos para execução em lote via `psql`, utilizando a função nativa `uuidv7()` do PostgreSQL 18.
 
 ```powershell
@@ -71,10 +79,12 @@ docker exec -i postgresql-service psql -U postgres -d postgres < seed-receivable
 | Parâmetro | Padrão | Descrição |
 | :--- | :--- | :--- |
 | `--count=N` | `100` | Quantidade total de registros de recebíveis a gerar. |
-| `--concurrency=N` | `10` | Quantidade de requisições HTTP paralelas (modo `http`). |
+| `--concurrency=N` | `10` | Quantidade de conexões HTTP paralelas simultâneas. |
+| `--batch` | `false` | Ativa envio em lote via `POST /api/v1/receivables/batch`. |
+| `--batch-size=N` | `200` | Quantidade de itens enviados por requisição no modo batch. |
 | `--api-url=URL` | `http://localhost:8080` | URL base da API Spring WebFlux. |
 | `--merchants=N` | `5` | Quantidade de lojistas no pool para possibilitar teste de paginação keyset. |
-| `--mode=MODE` | `http` | Modo de seed: `http` (envio via API) ou `sql` (gera arquivo `.sql`). |
+| `--mode=MODE` | `http` | Modo de seed: `http`, `batch` ou `sql` (gera arquivo `.sql`). |
 | `--output=FILE` | `seed-receivables.sql` | Nome do arquivo SQL de saída no modo `sql`. |
 | `--help`, `-h` | — | Exibe menu de ajuda com todos os parâmetros. |
 
