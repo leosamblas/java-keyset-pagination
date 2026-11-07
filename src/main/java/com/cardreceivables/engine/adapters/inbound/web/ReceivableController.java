@@ -13,6 +13,7 @@ import com.cardreceivables.engine.domain.ports.in.ListReceivablesKeysetUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -89,16 +90,15 @@ public class ReceivableController {
     }
 
     @PostMapping("/batch")
-    @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Cadastra recebíveis em lote (Batch)",
-            description = "Processa uma coleção de recebíveis de forma reativa e não-bloqueante, retornando o fluxo de recebíveis criados."
+            description = "Processa uma coleção de recebíveis de forma reativa e não-bloqueante, retornando a lista de recebíveis criados."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
                     description = "Lote de recebíveis cadastrado com sucesso",
-                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = ReceivableResponse.class))
+                    content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = ReceivableResponse.class)))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -106,12 +106,14 @@ public class ReceivableController {
                     content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    public Flux<ReceivableResponse> createBatch(@Valid @RequestBody List<CreateReceivableRequest> requests) {
+    public Mono<ResponseEntity<List<ReceivableResponse>>> createBatch(@RequestBody List<@Valid CreateReceivableRequest> requests) {
         List<CreateReceivableCommand> commands = requests.stream()
                 .map(ReceivableWebMapper::toCommand)
                 .toList();
         return createBatchUseCase.createBatch(commands)
-                .map(ReceivableWebMapper::toResponse);
+                .map(ReceivableWebMapper::toResponse)
+                .collectList()
+                .map(responses -> ResponseEntity.status(HttpStatus.CREATED).body(responses));
     }
 
     @GetMapping("/{id}")
