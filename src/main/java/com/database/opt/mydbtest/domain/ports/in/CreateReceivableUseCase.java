@@ -6,3 +6,4 @@ import reactor.core.publisher.Mono;
 public interface CreateReceivableUseCase {
     Mono<Receivable> create(CreateReceivableCommand command);
 }
+

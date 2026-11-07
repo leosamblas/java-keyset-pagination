@@ -204,3 +204,4 @@ public class ReceivableEntity implements Persistable<UUID> {
         this.createdAt = createdAt;
     }
 }
+

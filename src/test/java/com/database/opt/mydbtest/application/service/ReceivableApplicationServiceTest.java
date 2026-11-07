@@ -133,6 +133,23 @@ class ReceivableApplicationServiceTest {
     }
 
     @Test
+    @DisplayName("Deveria limitar o limit maximo a 100 para proteger memoria do servidor")
+    void shouldClampLimitToMaximumAllowed() {
+        String merchantId = "merch-1";
+        when(repositoryPort.findKeyset(eq(merchantId), any(), eq(101)))
+                .thenReturn(Flux.empty());
+
+        StepVerifier.create(service.listKeyset(merchantId, null, 1000))
+                .assertNext(page -> {
+                    assertThat(page.limit()).isEqualTo(100);
+                    assertThat(page.hasNext()).isFalse();
+                })
+                .verifyComplete();
+
+        verify(repositoryPort).findKeyset(merchantId, null, 101);
+    }
+
+    @Test
     @DisplayName("Deveria paginar via keyset e indicar hasNext = false na última página")
     void shouldListKeysetOnLastPage() {
         String merchantId = "merch-1";
@@ -153,3 +170,4 @@ class ReceivableApplicationServiceTest {
                 .verifyComplete();
     }
 }
+

@@ -106,6 +106,29 @@ class ReceivableTest {
     }
 
     @Test
+    @DisplayName("Deveria considerar dois recebiveis sem ID (id == null) como nao iguais")
+    void shouldNotConsiderUnpersistedReceivablesAsEqual() {
+        Receivable r1 = Receivable.builder()
+                .merchantId("merch-1")
+                .cardBrand(CardBrand.VISA)
+                .grossAmount(new BigDecimal("100.00"))
+                .feeRate(new BigDecimal("0.02"))
+                .build();
+
+        Receivable r2 = Receivable.builder()
+                .merchantId("merch-1")
+                .cardBrand(CardBrand.VISA)
+                .grossAmount(new BigDecimal("100.00"))
+                .feeRate(new BigDecimal("0.02"))
+                .build();
+
+        assertThat(r1.getId()).isNull();
+        assertThat(r2.getId()).isNull();
+        assertThat(r1).isNotEqualTo(r2);
+        assertThat(r1.hashCode()).isEqualTo(r2.hashCode());
+    }
+
+    @Test
     @DisplayName("Deveria construir KeysetPage com hasNext e nextCursor quando houver itens excedentes")
     void shouldBuildKeysetPageWithNextCursorWhenHasNext() {
         UUID id1 = UUID.fromString("01930777-a123-7456-8abc-def012345678");
@@ -150,3 +173,4 @@ class ReceivableTest {
 
     record TestItem(UUID id, String name) {}
 }
+

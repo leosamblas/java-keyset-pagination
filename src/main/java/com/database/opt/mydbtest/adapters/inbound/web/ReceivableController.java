@@ -88,3 +88,4 @@ public class ReceivableController {
                 .map(ReceivableWebMapper::toPageResponse);
     }
 }
+

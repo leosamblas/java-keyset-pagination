@@ -7,3 +7,4 @@ public enum CardBrand {
     AMEX,
     HIPERCARD
 }
+

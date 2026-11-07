@@ -9,3 +9,4 @@ public record KeysetPageResponse<T>(
         UUID nextCursor,
         boolean hasNext
 ) {}
+

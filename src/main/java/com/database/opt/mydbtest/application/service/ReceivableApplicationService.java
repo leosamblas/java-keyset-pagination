@@ -21,6 +21,9 @@ public class ReceivableApplicationService implements
         FindReceivableByIdUseCase,
         ListReceivablesKeysetUseCase {
 
+    private static final int DEFAULT_LIMIT = 20;
+    private static final int MAX_LIMIT = 100;
+
     private final ReceivableRepositoryPort repositoryPort;
 
     public ReceivableApplicationService(ReceivableRepositoryPort repositoryPort) {
@@ -51,10 +54,11 @@ public class ReceivableApplicationService implements
 
     @Override
     public Mono<KeysetPage<Receivable>> listKeyset(String merchantId, UUID cursor, int limit) {
-        int fetchLimit = (limit <= 0 ? 20 : limit) + 1;
+        int sanitizedLimit = (limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
+        int fetchLimit = sanitizedLimit + 1;
         return repositoryPort.findKeyset(merchantId, cursor, fetchLimit)
                 .collectList()
-                .map(items -> KeysetPage.of(items, limit <= 0 ? 20 : limit, Receivable::getId));
+                .map(items -> KeysetPage.of(items, sanitizedLimit, Receivable::getId));
     }
 
     private Receivable toDomain(CreateReceivableCommand cmd) {
@@ -69,3 +73,4 @@ public class ReceivableApplicationService implements
                 .build();
     }
 }
+

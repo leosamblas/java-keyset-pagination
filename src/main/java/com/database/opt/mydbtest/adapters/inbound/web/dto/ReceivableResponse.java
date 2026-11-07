@@ -23,3 +23,4 @@ public record ReceivableResponse(
         LocalDate settlementDate,
         Instant createdAt
 ) {}
+

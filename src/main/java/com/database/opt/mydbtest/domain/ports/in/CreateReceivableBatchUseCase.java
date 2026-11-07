@@ -8,3 +8,4 @@ import java.util.List;
 public interface CreateReceivableBatchUseCase {
     Flux<Receivable> createBatch(List<CreateReceivableCommand> commands);
 }
+

@@ -13,3 +13,4 @@ public class BeanConfiguration {
         return new ReceivableApplicationService(repositoryPort);
     }
 }
+

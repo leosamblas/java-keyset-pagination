@@ -154,6 +154,20 @@ class ReceivableControllerTest {
     }
 
     @Test
+    @DisplayName("Erro 500 inesperado nao deve vazar mensagem interna no corpo da resposta")
+    void shouldSanitizeGeneralExceptionMessage() {
+        when(findByIdUseCase.findById(any())).thenThrow(new RuntimeException("SQL syntax error near secret_table; credentials leaked"));
+
+        webTestClient.get()
+                .uri("/api/v1/receivables/{id}", UUID.randomUUID())
+                .exchange()
+                .expectStatus().is5xxServerError()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(500)
+                .jsonPath("$.message").isEqualTo("An unexpected internal error occurred");
+    }
+
+    @Test
     @DisplayName("GET /api/v1/receivables com Keyset Pagination deve retornar estrutura de página com cursor")
     void shouldReturnKeysetPageResponse() {
         UUID id1 = UUID.randomUUID();

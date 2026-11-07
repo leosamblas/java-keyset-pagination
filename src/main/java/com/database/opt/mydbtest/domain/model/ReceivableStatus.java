@@ -5,3 +5,4 @@ public enum ReceivableStatus {
     SETTLED,
     CANCELLED
 }
+

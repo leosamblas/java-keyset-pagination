@@ -66,3 +66,4 @@ public class ReceivablePersistenceAdapter implements ReceivableRepositoryPort {
         return entities.map(ReceivablePersistenceMapper::toDomain);
     }
 }
+

@@ -10,3 +10,4 @@ public record ErrorResponse(
         String message,
         List<String> details
 ) {}
+

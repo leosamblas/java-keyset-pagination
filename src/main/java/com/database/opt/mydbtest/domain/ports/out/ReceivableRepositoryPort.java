@@ -13,3 +13,4 @@ public interface ReceivableRepositoryPort {
     Mono<Receivable> findById(UUID id);
     Flux<Receivable> findKeyset(String merchantId, UUID cursor, int fetchLimit);
 }
+

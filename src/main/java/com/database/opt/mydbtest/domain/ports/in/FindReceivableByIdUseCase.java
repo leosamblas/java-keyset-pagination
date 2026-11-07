@@ -8,3 +8,4 @@ import java.util.UUID;
 public interface FindReceivableByIdUseCase {
     Mono<Receivable> findById(UUID id);
 }
+

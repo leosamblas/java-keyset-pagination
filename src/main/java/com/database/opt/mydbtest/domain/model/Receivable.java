@@ -240,11 +240,12 @@ public class Receivable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Receivable that = (Receivable) o;
-        return Objects.equals(id, that.id);
+        return this.id != null && Objects.equals(this.id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        return id != null ? id.hashCode() : getClass().hashCode();
     }
 }
+

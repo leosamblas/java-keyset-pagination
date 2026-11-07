@@ -14,3 +14,4 @@ public record CreateReceivableCommand(
         Integer installmentNumber,
         Instant transactionDate
 ) {}
+

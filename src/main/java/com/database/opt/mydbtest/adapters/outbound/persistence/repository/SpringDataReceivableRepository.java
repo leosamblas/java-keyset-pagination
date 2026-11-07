@@ -21,3 +21,4 @@ public interface SpringDataReceivableRepository extends ReactiveCrudRepository<R
     @Query("SELECT * FROM receivables WHERE id < :cursor ORDER BY id DESC LIMIT :limit")
     Flux<ReceivableEntity> findNextPageGlobal(UUID cursor, int limit);
 }
+

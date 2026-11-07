@@ -97,3 +97,4 @@ class ReceivablePersistenceAdapterTest {
         assertThat(firstPageIds).doesNotContainAnyElementsOf(secondPageIds);
     }
 }
+

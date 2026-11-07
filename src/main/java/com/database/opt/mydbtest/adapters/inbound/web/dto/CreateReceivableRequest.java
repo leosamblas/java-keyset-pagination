@@ -32,3 +32,4 @@ public record CreateReceivableRequest(
 
         Instant transactionDate
 ) {}
+

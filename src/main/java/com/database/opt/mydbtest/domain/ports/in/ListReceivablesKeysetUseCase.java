@@ -9,3 +9,4 @@ import java.util.UUID;
 public interface ListReceivablesKeysetUseCase {
     Mono<KeysetPage<Receivable>> listKeyset(String merchantId, UUID cursor, int limit);
 }
+
